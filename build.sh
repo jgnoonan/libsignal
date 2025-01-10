@@ -1,21 +1,24 @@
 #!/bin/bash
 
-# Define the path to the specific Cargo.toml file
-CARGO_MANIFEST_PATH="/Users/jgnoonan/libsignal/rust/bridge/ffi/Cargo.toml"
+# Define the workspace root
+WORKSPACE_ROOT="/Users/jgnoonan/libsignal"
 
 # Set the Rust target triple for each architecture
 IOS_TARGET="aarch64-apple-ios"
 IOS_SIM_TARGET="aarch64-apple-ios-sim"
 
+# Navigate to the workspace root
+cd "$WORKSPACE_ROOT" || exit
+
 # Clean previous builds
 echo "Cleaning previous build artifacts..."
-cargo clean --manifest-path "$CARGO_MANIFEST_PATH"
+cargo clean
 
 # Function to build for a specific target
 build_target() {
     local target=$1
     echo "Building for target: $target"
-    cargo build --release --target "$target" --manifest-path "$CARGO_MANIFEST_PATH"
+    cargo build --release --target "$target" --manifest-path "rust/bridge/ffi/Cargo.toml"
 }
 
 # Build for iOS (device)
@@ -28,3 +31,4 @@ build_target $IOS_SIM_TARGET
 echo "Build complete. Libraries are located in:"
 echo "target/$IOS_TARGET/release/libsignal_ffi.a"
 echo "target/$IOS_SIM_TARGET/release/libsignal_ffi.a"
+
