@@ -4,7 +4,6 @@
 //
 
 use std::default::Default;
-
 use futures_util::TryFutureExt as _;
 use http::{HeaderName, StatusCode};
 use libsignal_core::{Aci, Pni, E164};
@@ -326,74 +325,85 @@ pub struct ClientResponseCollector(CdsiConnection);
 
 impl CdsiConnection {
     /// Connect to remote host and verify remote attestation.
-    pub async fn connect<C, T>(
-        endpoint: &EnclaveEndpointConnection<Cdsi, C>,
-        transport_connector: T,
-        auth: Auth,
-    ) -> Result<Self, LookupError>
-    where
-        C: ConnectionManager,
-        T: TransportConnector,
-    {
-        log::info!("connecting to CDSI endpoint");
-        let (connection, _info) = endpoint
-            .connect(auth, transport_connector)
-            .inspect_err(|e| {
-                log::warn!("CDSI connection failed: {e}");
-            })
-            .await?;
+  pub async fn connect<C, T>(
+    endpoint: &EnclaveEndpointConnection<Cdsi, C>,
+    transport_connector: T,
+    auth: Auth,
+  ) -> Result<Self, LookupError>
+  where
+    C: ConnectionManager,
+    T: TransportConnector,
+  {
+    log::info!("Attempting to connect to CDSI endpoint: {:?}", endpoint);
 
-        log::info!("successfully established attested connection to CDSI endpoint");
-        Ok(Self(connection))
-    }
-
-    pub async fn connect_with(
-        connect: &tokio::sync::RwLock<ConnectState>,
-        resolver: &DnsResolver,
-        route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
-        confirmation_header_name: Option<HeaderName>,
-        ws_config: crate::infra::ws2::Config,
-        params: &EndpointParams<'_, Cdsi>,
-        auth: Auth,
-    ) -> Result<Self, LookupError> {
-        let (connection, _route_info) = ConnectState::connect_attested_ws(
-            connect,
-            route_provider,
-            auth,
-            resolver,
-            confirmation_header_name,
-            ws_config,
-            move |attestation_message| Cdsi::new_handshake(params, attestation_message),
-        )
+    let (connection, _info) = endpoint
+        .connect(auth, transport_connector)
+        .inspect_err(|e| {
+            log::warn!("CDSI connection failed: {e}");
+        })
         .await?;
-        Ok(Self(connection))
-    }
 
-    pub async fn send_request(
-        mut self,
-        request: LookupRequest,
+    log::info!("Successfully established attested connection to CDSI endpoint");
+    Ok(Self(connection))
+  }
+
+pub async fn connect_with(
+    connect: &tokio::sync::RwLock<ConnectState>,
+    resolver: &DnsResolver,
+    route_provider: impl RouteProvider<Route = UnresolvedWebsocketServiceRoute>,
+    confirmation_header_name: Option<HeaderName>,
+    ws_config: crate::infra::ws2::Config,
+    params: &EndpointParams<'_, Cdsi>,
+    auth: Auth,
+    ) -> Result<Self, LookupError> {
+      log::info!("Resolving route for CDSI connection");
+      let route = route_provider
+        .get_route()
+        .await
+        .expect("Failed to resolve route");
+      log::info!("Resolved CDSI route: {:?}", route);
+
+      let (connection, _route_info) = ConnectState::connect_attested_ws(
+        connect,
+        route_provider,
+        auth,
+        resolver,
+        confirmation_header_name,
+        ws_config,
+        move |attestation_message| Cdsi::new_handshake(params, attestation_message),
+      )
+      .await?;
+
+      log::info!("Successfully connected to CDSI at route: {:?}", route);
+      Ok(Self(connection))
+  }
+
+pub async fn send_request(
+    mut self,
+    request: LookupRequest,
     ) -> Result<(Token, ClientResponseCollector), LookupError> {
-        let request_info = LookupRequestDebugInfo::from(&request);
-        let request = request.into_client_request().encode_to_vec();
-        log::info!(
-            "sending {}-byte initial request: {request_info}",
-            request.len()
-        );
-        self.0.send_bytes(&request).await?;
-        let token_response: ClientResponse = self.0.receive().await?.next_or_else(err_for_close)?;
+      log::info!("Preparing to send request to CDSI");
+      let request_info = LookupRequestDebugInfo::from(&request);
+      let request = request.into_client_request().encode_to_vec();
+      log::info!("Sending {}-byte initial request to CDSI endpoint", request.len());
 
-        if token_response.token.is_empty() {
-            return Err(LookupError::CdsiProtocol(
-                CdsiProtocolError::NoTokenInResponse,
-            ));
-        }
+      self.0.send_bytes(&request).await?;
+      log::info!("Request sent successfully");
 
-        Ok((
-            Token(token_response.token.into_boxed_slice()),
-            ClientResponseCollector(self),
-        ))
-    }
-}
+      let token_response: ClientResponse = self.0.receive().await?.next_or_else(err_for_close)?;
+
+      if token_response.token.is_empty() {
+          return Err(LookupError::CdsiProtocol(
+              CdsiProtocolError::NoTokenInResponse,
+          ));
+      }
+
+      log::info!("Received token response from CDSI endpoint");
+      Ok((
+        Token(token_response.token.into_boxed_slice()),
+        ClientResponseCollector(self),
+      ))
+  }
 
 impl ClientResponseCollector {
     pub async fn collect(self) -> Result<LookupResponse, LookupError> {
