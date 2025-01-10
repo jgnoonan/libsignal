@@ -90,12 +90,12 @@ const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
         }),
     },
     ip_v4: &[ip_addr!(v4, "98.82.99.2")],
-    ip_v6: &[ip_addr!(v6, "2603:1030:7::1")],
+    ip_v6: &[ip_addr!(v6, "fe80::1095:50ff:fe38:8b1b")],
 };
 
 const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
-        hostname: "cdsi.staging.signal.org",
+        hostname: "signalserver.valuelabs.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
@@ -104,8 +104,8 @@ const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
             configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
         }),
     },
-    ip_v4: &[ip_addr!(v4, "104.43.162.137")],
-    ip_v6: &[ip_addr!(v6, "2603:1030:7::732")],
+    ip_v4: &[ip_addr!(v4, "98.82.99.2")],
+    ip_v6: &[ip_addr!(v6, "fe80::1095:50ff:fe38:8b1b")],
 };
 
 const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
