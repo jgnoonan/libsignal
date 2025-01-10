@@ -110,7 +110,7 @@ const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
-        hostname: "svr2.signal.org",
+        hostname: "signalserver.valuelabs.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
@@ -119,13 +119,13 @@ const DOMAIN_CONFIG_SVR2: DomainConfig = DomainConfig {
             configs: [PROXY_CONFIG_F_PROD, PROXY_CONFIG_G],
         }),
     },
-    ip_v4: &[ip_addr!(v4, "20.66.40.69")],
+    ip_v4: &[ip_addr!(v4, "98.82.99.2")],
     ip_v6: &[],
 };
 
 const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
-        hostname: "svr2.staging.signal.org",
+        hostname: "signalserver.valuelabs.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
@@ -134,7 +134,7 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
             configs: [PROXY_CONFIG_F_STAGING, PROXY_CONFIG_G],
         }),
     },
-    ip_v4: &[ip_addr!(v4, "20.253.229.239")],
+    ip_v4: &[ip_addr!(v4, "98.82.99.2")],
     ip_v6: &[],
 };
 
