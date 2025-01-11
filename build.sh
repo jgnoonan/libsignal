@@ -2,7 +2,7 @@
 
 if [ -z "${PROJECT_TEMP_DIR}" ]; then
     echo "PROJECT_TEMP_DIR is not set. Falling back to a default directory."
-    PROJECT_TEMP_DIR="/tmp/libsignal_temp"
+    PROJECT_TEMP_DIR="/Users/jgnoonan/Signal-iOS/libsignal_temp"
 fi
 
 echo "Using PROJECT_TEMP_DIR: $PROJECT_TEMP_DIR"
