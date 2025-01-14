@@ -46,7 +46,7 @@ const DOMAIN_CONFIG_CHAT: DomainConfig = DomainConfig {
         ip_addr!(v6, "2600:9000:a61f:527c:d5eb:a431:5239:3232"),
     ],
     connect: ConnectionConfig {
-        hostname: "chat.signal.org",
+        hostname: "signalserver.valuelabs.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
@@ -67,7 +67,7 @@ const DOMAIN_CONFIG_CHAT_STAGING: DomainConfig = DomainConfig {
         ip_addr!(v6, "2600:9000:a61f:527c:2215:cd9:bac6:a2f8"),
     ],
     connect: ConnectionConfig {
-        hostname: "chat.staging.signal.org",
+        hostname: "signalserver.valuelabs.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: Some(TIMESTAMP_HEADER_NAME),
@@ -93,6 +93,14 @@ const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
     ip_v6: &[ip_addr!(v6, "fe80::1095:50ff:fe38:8b1b")],
 };
 
+fn log_domain_config() {
+    log::info!(
+        "Initializing DOMAIN_CONFIG_CDSI with hostname: {}, ip_v4: {:?}, ip_v6: {:?}",
+        DOMAIN_CONFIG_CDSI.connect.hostname,
+        DOMAIN_CONFIG_CDSI.ip_v4,
+        DOMAIN_CONFIG_CDSI.ip_v6
+    );
+}
 const DOMAIN_CONFIG_CDSI_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
         hostname: "signalserver.valuelabs.com",
@@ -140,7 +148,7 @@ const DOMAIN_CONFIG_SVR2_STAGING: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
-        hostname: "backend1.svr3.signal.org",
+        hostname: "signalserver.valuelabs.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
@@ -155,7 +163,7 @@ const DOMAIN_CONFIG_SVR3_SGX: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
-        hostname: "backend1.svr3.staging.signal.org",
+        hostname: "signalserver.valuelabs.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
@@ -170,7 +178,7 @@ const DOMAIN_CONFIG_SVR3_SGX_STAGING: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
-        hostname: "backend2.svr3.signal.org",
+        hostname: "signalserver.valuelabs.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
@@ -185,7 +193,7 @@ const DOMAIN_CONFIG_SVR3_NITRO: DomainConfig = DomainConfig {
 
 const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
-        hostname: "backend2.svr3.staging.signal.org",
+        hostname: "signalserver.valuelabs.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
@@ -200,7 +208,7 @@ const DOMAIN_CONFIG_SVR3_NITRO_STAGING: DomainConfig = DomainConfig {
 
 pub const DOMAIN_CONFIG_SVR3_TPM2SNP: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
-        hostname: "backend3.svr3.signal.org",
+        hostname: "signalserver.valuelabs.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,
@@ -215,7 +223,7 @@ pub const DOMAIN_CONFIG_SVR3_TPM2SNP: DomainConfig = DomainConfig {
 
 pub const DOMAIN_CONFIG_SVR3_TPM2SNP_STAGING: DomainConfig = DomainConfig {
     connect: ConnectionConfig {
-        hostname: "backend3.svr3.staging.signal.org",
+        hostname: "signalserver.valuelabs.com",
         port: DEFAULT_HTTPS_PORT,
         cert: SIGNAL_ROOT_CERTIFICATES,
         confirmation_header_name: None,

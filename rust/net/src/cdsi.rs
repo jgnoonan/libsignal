@@ -335,15 +335,31 @@ impl CdsiConnection {
         C: ConnectionManager,
         T: TransportConnector,
     {
-        log::info!("connecting to CDSI endpoint");
+        // Log the WebSocketConfig details
+        let ws_config = &endpoint.endpoint_connection.config;
+        log::info!(
+            "NEW CODE VERSION 4!! Attempting to connect to CDSI endpoint with config: \
+            endpoint: {}, max_connection_time: {:?}, keep_alive_interval: {:?}, max_idle_time: {:?}",
+            ws_config.endpoint.as_str(),
+            ws_config.max_connection_time,
+            ws_config.keep_alive_interval,
+            ws_config.max_idle_time
+        );
+    
+        // Attempt the connection
         let (connection, _info) = endpoint
             .connect(auth, transport_connector)
             .inspect_err(|e| {
-                log::warn!("CDSI connection failed: {e}");
+                log::warn!("CDSI connection failed: {}", e);
             })
             .await?;
-
-        log::info!("successfully established attested connection to CDSI endpoint");
+    
+        // Log success
+        log::info!(
+            "Successfully established attested connection to CDSI endpoint: {}",
+            ws_config.endpoint
+        );
+    
         Ok(Self(connection))
     }
 
@@ -374,20 +390,26 @@ impl CdsiConnection {
         request: LookupRequest,
     ) -> Result<(Token, ClientResponseCollector), LookupError> {
         let request_info = LookupRequestDebugInfo::from(&request);
-        let request = request.into_client_request().encode_to_vec();
         log::info!(
-            "sending {}-byte initial request: {request_info}",
-            request.len()
+            "Sending CDSI request: new_e164s: {}, prev_e164s: {}, acis_and_access_keys: {}, token size: {}",
+            request_info.new_e164s,
+            request_info.prev_e164s,
+            request_info.acis_and_access_keys,
+            request_info.token
         );
+    
+        let request = request.into_client_request().encode_to_vec();
         self.0.send_bytes(&request).await?;
+        log::info!("Request sent successfully ({} bytes)", request.len());
+    
         let token_response: ClientResponse = self.0.receive().await?.next_or_else(err_for_close)?;
-
+    
         if token_response.token.is_empty() {
             return Err(LookupError::CdsiProtocol(
                 CdsiProtocolError::NoTokenInResponse,
             ));
         }
-
+    
         Ok((
             Token(token_response.token.into_boxed_slice()),
             ClientResponseCollector(self),
@@ -398,18 +420,23 @@ impl CdsiConnection {
 impl ClientResponseCollector {
     pub async fn collect(self) -> Result<LookupResponse, LookupError> {
         let Self(mut connection) = self;
-
+        log::info!("Starting to collect CDSI server response");
+    
         let token_ack = ClientRequest {
             token_ack: true,
             ..Default::default()
         };
-
+    
         connection.0.send(token_ack).await?;
+        log::info!("Token acknowledgement sent");
+    
         let mut response: ClientResponse =
             connection.0.receive().await?.next_or_else(err_for_close)?;
+    
         loop {
             match connection.0.receive_bytes().await? {
                 NextOrClose::Next(decoded) => {
+                    log::info!("Received additional response bytes");
                     response
                         .merge(decoded.as_ref())
                         .map_err(LookupError::from)?;
@@ -421,10 +448,13 @@ impl ClientResponseCollector {
                         reason: _,
                     }),
                 ) => {
-                    log::info!("finished CDSI lookup");
+                    log::info!("CDSI lookup finished successfully");
                     break;
                 }
-                NextOrClose::Close(Some(close)) => return Err(err_for_close(Some(close))),
+                NextOrClose::Close(Some(close)) => {
+                    log::warn!("Connection closed unexpectedly: {:?}", close);
+                    return Err(err_for_close(Some(close)));
+                }
             }
         }
         Ok(response.try_into()?)
@@ -471,7 +501,7 @@ impl From<&LookupRequest> for LookupRequestDebugInfo {
 
 /// Numeric code set by the server on the websocket close frame.
 #[repr(u16)]
-#[derive(Copy, Clone, num_enum::TryFromPrimitive, strum::IntoStaticStr)]
+#[derive(Copy, Clone, num_enum::TryFromPrimitive, strum::IntoStaticStr, Debug)]
 enum CdsiCloseCode {
     InvalidArgument = 4003,
     RateLimitExceeded = 4008,
@@ -485,19 +515,17 @@ enum CdsiCloseCode {
 /// Returns Some(err) if there is a relevant LookupError value for the
 /// provided close frame. Otherwise returns None.
 fn err_for_close(close: Option<CloseFrame<'_>>) -> LookupError {
-    fn unexpected_close(close: Option<CloseFrame<'_>>) -> LookupError {
-        LookupError::EnclaveProtocol(AttestedProtocolError::UnexpectedClose(close.into()))
-    }
-
     let Some(CloseFrame { code, reason }) = &close else {
-        log::warn!("got unexpected connection close without a Close frame");
-        return unexpected_close(close);
+        log::warn!("Unexpected connection close without a Close frame");
+        return LookupError::EnclaveProtocol(AttestedProtocolError::UnexpectedClose(close.into()));
     };
 
     let Ok(code) = CdsiCloseCode::try_from(u16::from(code)) else {
-        log::warn!("got unexpected websocket error code: {code}");
-        return unexpected_close(close);
+        log::warn!("Unexpected websocket error code: {code}");
+        return LookupError::EnclaveProtocol(AttestedProtocolError::UnexpectedClose(close.into()));
     };
+
+    log::warn!("Connection closed: code = {code:?}, reason = {reason}");
 
     match code {
         CdsiCloseCode::InvalidArgument => LookupError::InvalidArgument {
@@ -509,9 +537,10 @@ fn err_for_close(close: Option<CloseFrame<'_>>) -> LookupError {
                 retry_after_seconds,
             }) = serde_json::from_str(reason).ok()
             else {
-                log::warn!("failed to parse rate limit from reason");
-                return unexpected_close(close);
+                log::warn!("Failed to parse rate limit from reason");
+                return LookupError::EnclaveProtocol(AttestedProtocolError::UnexpectedClose(close.into()));
             };
+            log::info!("Rate limited, retry after: {retry_after_seconds} seconds");
             LookupError::RateLimited {
                 retry_after_seconds,
             }

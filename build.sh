@@ -1,46 +1,51 @@
 #!/bin/bash
 
-if [ -z "${PROJECT_TEMP_DIR}" ]; then
-    echo "PROJECT_TEMP_DIR is not set. Falling back to a default directory."
-    PROJECT_TEMP_DIR="/Users/jgnoonan/Signal-iOS/libsignal_temp"
-fi
+set -euo pipefail
 
-echo "Using PROJECT_TEMP_DIR: $PROJECT_TEMP_DIR"
+# Navigate to the project root
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+cd "${SCRIPT_DIR}"
 
-# Define the workspace root
-WORKSPACE_ROOT="/Users/jgnoonan/libsignal"
+# Export common Rust build environment variables
+export CARGO_PROFILE_RELEASE_DEBUG=1 # Enable line tables for debugging
+export RUSTFLAGS="--cfg aes_armv8 ${RUSTFLAGS:-}" # ARMv8 cryptography acceleration
 
-# Define the temporary directory expected by Xcode
-LIBSIGNAL_FFI_TEMP_DIR="${PROJECT_TEMP_DIR}/libsignal_ffi"
+# Set up iOS-specific build settings
+export IPHONEOS_DEPLOYMENT_TARGET=13
+export CARGO_PROFILE_RELEASE_LTO=fat # Use full LTO to reduce binary size
+export CFLAGS="-flto=full -DOPENSSL_SMALL ${CFLAGS:-}" # Optimize for size
 
-# Set the Rust target triple for each architecture
-IOS_TARGET="aarch64-apple-ios"
-IOS_SIM_TARGET="aarch64-apple-ios-sim"
+# Work around cc crate bug for Catalyst targets
+export CFLAGS_aarch64_apple_ios_macabi="--target=arm64-apple-ios-macabi ${CFLAGS:-}"
+export CFLAGS_x86_64_apple_ios_macabi="--target=x86_64-apple-ios-macabi ${CFLAGS:-}"
 
-# Navigate to the workspace root
-cd "$WORKSPACE_ROOT" || exit
+# Function to build for a specific target
+build_target() {
+  local target=$1
+  echo "Building for target: $target"
+  cargo build -p libsignal-ffi --release --target "$target"
+}
 
-# Clean previous builds
-echo "Cleaning previous build artifacts..."
-cargo clean
+# Build for both iOS targets
+build_target "aarch64-apple-ios"
+build_target "aarch64-apple-ios-sim"
 
-# Build for iOS (device)
-echo "Building for iOS target: $IOS_TARGET"
-cargo build --release --target "$IOS_TARGET" --manifest-path "rust/bridge/ffi/Cargo.toml"
+# Optional: Regenerate FFI headers if needed
+generate_ffi_headers() {
+  local ffi_header_path="swift/Sources/SignalFfi/signal_ffi.h"
+  local ffi_testing_header_path="swift/Sources/SignalFfi/signal_ffi_testing.h"
 
-# Build for iOS Simulator (arm64)
-echo "Building for iOS Simulator target: $IOS_SIM_TARGET"
-cargo build --release --target "$IOS_SIM_TARGET" --manifest-path "rust/bridge/ffi/Cargo.toml"
+  if ! command -v cbindgen > /dev/null; then
+    echo 'error: cbindgen not found in PATH' >&2
+    exit 1
+  fi
 
-# Create directories in the expected location
-echo "Preparing directories in $LIBSIGNAL_FFI_TEMP_DIR"
-mkdir -p "$LIBSIGNAL_FFI_TEMP_DIR/target/$IOS_TARGET/release"
-mkdir -p "$LIBSIGNAL_FFI_TEMP_DIR/target/$IOS_SIM_TARGET/release"
+  echo "Generating FFI headers..."
+  cbindgen --profile release -o "$ffi_header_path" rust/bridge/ffi
+  cbindgen --profile release -o "$ffi_testing_header_path" rust/bridge/shared/testing --config rust/bridge/ffi/cbindgen-testing.toml
+}
 
-# Copy built libraries to the expected locations
-echo "Copying libraries to $LIBSIGNAL_FFI_TEMP_DIR"
-cp "target/$IOS_TARGET/release/libsignal_ffi.a" "$LIBSIGNAL_FFI_TEMP_DIR/target/$IOS_TARGET/release/"
-cp "target/$IOS_SIM_TARGET/release/libsignal_ffi.a" "$LIBSIGNAL_FFI_TEMP_DIR/target/$IOS_SIM_TARGET/release/"
+# Uncomment the line below if FFI headers need to be regenerated
+# generate_ffi_headers
 
-echo "Build complete. Libraries are available in $LIBSIGNAL_FFI_TEMP_DIR"
-
+echo "Rust build completed successfully."
