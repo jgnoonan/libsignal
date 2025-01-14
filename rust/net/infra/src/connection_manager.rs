@@ -297,7 +297,7 @@ where
                 let log_error = |e: &E, when: &'static str| {
                     log::debug!("Connection attempt failed with a non-fatal error: {e:?}, will retry {when}");
                     log::info!(
-                        "Connection attempt failed with an error: {} ({})",
+                        "MYCODE V1 CM Connection attempt failed with an error: {} ({})",
                         e,
                         route_manager.describe_for_logging(),
                     );
@@ -322,7 +322,7 @@ where
             }
             ConnectionAttemptOutcome::TimedOut => {
                 log::info!(
-                    "Connection attempt timed out ({:?})",
+                    "MY CM CODE V1 Connection attempt timed out ({:?})",
                     route_manager.describe_for_logging()
                 );
                 continue;
