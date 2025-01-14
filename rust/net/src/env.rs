@@ -93,6 +93,7 @@ const DOMAIN_CONFIG_CDSI: DomainConfig = DomainConfig {
     ip_v6: &[ip_addr!(v6, "fe80::1095:50ff:fe38:8b1b")],
 };
 
+#[allow(dead_code)]
 fn log_domain_config() {
     log::info!(
         "Initializing DOMAIN_CONFIG_CDSI with hostname: {}, ip_v4: {:?}, ip_v6: {:?}",
